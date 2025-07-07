@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notizen</title>
+
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: bold;
+            background:  #ffedb3
+        }
+        div {
+            text-align: center;
+            font-size: 40px;
+            text-decoration: underline;
+        }
+
+        input[type="text"] {
+            font-size: 15px;
+            text-align: center;
+            background-color: #ffedb3;
+            color: black;
+        }
+
+        .info {
+            font-size: 12px;
+            color: grey;
+            text-align: center;
+            font-weight: normal;
+            text-decoration: none;
+            
+        }
+    </style>
+</head>
+<body>
+    <div>Deine Notizen:</div>
+    <br>
+    <br>
+   <input type="text" id="noteInput" placeholder="Was möchtest du notieren?">
+<button id="addBtn">Add</button>
+<ul id="noteList" style="text-align:left; margin-left:20px;text-decoration: none;"></ul>
+
+<script>
+const button = document.getElementById('addBtn'); // Holt den Button mit der ID "addBtn"
+button.addEventListener('click', function() {     // Wenn auf den Button geklickt wird, mache Folgendes:
+    const input = document.getElementById('noteInput'); // Holt das Eingabefeld
+    const text = input.value.trim();                   // Liest den Text und entfernt Leerzeichen vorne und hinten
+    if (text === "") return;                           // Wenn nichts eingegeben wurde, mache nichts
+    const li = document.createElement('li');           // Erstellt einen neuen Listenpunkt (li)
+    li.textContent = text + " ";                       // Setzt den Text des Listenpunkts auf das, was du eingegeben hast
+    const delBtn = document.createElement('button');   // Erstellt einen neuen Button für "Delete"
+    delBtn.textContent = "Delete";                     // Der Button heißt "Delete"
+    delBtn.style.background = "red";                   // Der Button ist rot
+    delBtn.style.color = "white";                      // Die Schrift auf dem Button ist weiß
+    delBtn.style.border = "none";                      // Kein Rahmen um den Button
+    delBtn.style.marginLeft = "10px";                  // Abstand zwischen Text und Button
+    delBtn.style.cursor = "pointer";                   // Mauszeiger wird zur Hand, wenn man drüber fährt
+    delBtn.onclick = function() {                      // Wenn auf den Delete-Button geklickt wird:
+        li.remove();                                   // ...wird der Listenpunkt gelöscht
+    };
+    li.appendChild(delBtn);                            // Hängt den Delete-Button an den Listenpunkt an
+    document.getElementById('noteList').appendChild(li); // Hängt den Listenpunkt an die Liste an
+    input.value = '';                                  // Macht das Eingabefeld wieder leer
+});
+</script>
+
+<div class="info">
+Eine kleine Information:
+ Dies ist lediglich eine Demo-Seite, die noch nicht vollständig ist. Das heißt, dass es noch keine Möglichkeit gibt 
+    die Notizen zu speicher oder zu laden. Solltest du Vorschläge haben, was du dir für diese Seite wünschen würdest, melde dich gerne über meinem Discord-Profil, bei Gentklano!
+</div>
+<br>
+</body>
+</html>

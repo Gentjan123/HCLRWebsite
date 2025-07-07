@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hamburg City Life Roleplay</title>
+<style>
+  /* Reset & Basics */
+  * {
+    margin: 0; padding: 0; box-sizing: border-box;
+  }
+  body {
+    background: #0f1117;
+    color: #e1e1e6;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  a {
+    color: #40c4ff;
+    text-decoration: none;
+    transition: color 0.25s ease;
+  }
+  a:hover {
+    color: #82daff;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    padding: 3rem 1rem 1.5rem;
+    background: linear-gradient(180deg, #000a14cc, transparent);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+  }
+  header h1 {
+    font-weight: 800;
+    font-size: 3.2rem;
+    color: #40c4ff;
+    margin-bottom: 0.3rem;
+    letter-spacing: 0.05em;
+  }
+  header p {
+    font-weight: 300;
+    font-size: 1.3rem;
+    color: #b0b7c3;
+    font-style: italic;
+  }
+
+  /* Navigation */
+  nav {
+    display: flex;
+    justify-content: center;
+    background: rgba(15,17,23,0.85);
+    backdrop-filter: saturate(180%) blur(10px);
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    gap: 2.5rem;
+    font-weight: 600;
+    font-size: 1.15rem;
+    box-shadow: 0 1px 10px #0009;
+  }
+  nav a {
+    color: #e1e1e6;
+    position: relative;
+  }
+  nav a::after {
+    content: "";
+    position: absolute;
+    left: 0; bottom: -4px;
+    width: 0;
+    height: 3px;
+    background: #40c4ff;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  nav a:hover::after {
+    width: 100%;
+  }
+
+  /* Main container */
+  main {
+    max-width: 900px;
+    margin: 3rem auto 4rem;
+    padding: 0 1.25rem;
+    flex-grow: 1;
+  }
+
+  /* Sections */
+  section {
+    margin-bottom: 3.5rem;
+    background: #171a24;
+    border-radius: 14px;
+    padding: 2rem 2.5rem;
+    box-shadow: 0 6px 15px rgb(10 15 30 / 0.7);
+    transition: box-shadow 0.3s ease;
+  }
+  section:hover {
+    box-shadow: 0 10px 30px rgb(15 36 69 / 0.85);
+  }
+  section h2 {
+    color: #40c4ff;
+    font-size: 2.4rem;
+    margin-bottom: 1.2rem;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #40c4ff;
+    padding-bottom: 0.3rem;
+    max-width: max-content;
+  }
+  section p {
+    color: #c1c4cd;
+    font-weight: 400;
+    font-size: 1.1rem;
+    line-height: 1.7;
+  }
+
+  /* Fraktionen Grid */
+  .factions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.8rem;
+  }
+  .card {
+    background: #222733;
+    border-radius: 12px;
+    padding: 1.6rem 1.8rem;
+    box-shadow: 0 4px 18px rgb(0 196 255 / 0.15);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: default;
+  }
+  .card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 25px rgb(0 196 255 / 0.35);
+  }
+  .card h3 {
+    color: #40c4ff;
+    margin-bottom: 0.7rem;
+    font-size: 1.45rem;
+    font-weight: 700;
+  }
+  .card p {
+    font-weight: 300;
+    color: #abb2bf;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-block;
+    background: #40c4ff;
+    color: #0b1624;
+    font-weight: 700;
+    padding: 0.85rem 2.2rem;
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s ease;
+    margin-top: 1.3rem;
+    text-align: center;
+    text-decoration: none;
+    font-size: 1.1rem;
+    box-shadow: 0 6px 15px rgb(64 196 255 / 0.4);
+  }
+  .btn:hover {
+    background: #7dd1ff;
+    box-shadow: 0 8px 20px rgb(125 209 255 / 0.65);
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    background: #101419;
+    color: #667088;
+    font-size: 0.95rem;
+    user-select: none;
+    border-top: 1px solid #222733;
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    header h1 {
+      font-size: 2.3rem;
+    }
+    nav {
+      font-size: 1rem;
+      gap: 1.2rem;
+      padding: 0.75rem 0;
+    }
+    section h2 {
+      font-size: 2rem;
+    }
+    main {
+      margin: 2rem auto 3rem;
+      padding: 0 1rem;
+    }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Hamburg City Life Roleplay</h1>
+    <p>Professionelles und realistisches Roleplay in der Metropolregion Hamburg</p>
+  </header>
+
+  <nav>
+    <a href="#about">Über Uns</a>
+    <a href="#factions">Fraktionen</a>
+    <a href="#rules">Regelwerk</a>
+    <a href="#apply">Bewerbung</a>
+    <a href="https://discord.gg/av2Zkbv5vB" target="_blank" rel="noopener noreferrer">Discord</a>
+  </nav>
+
+  <main>
+    <section id="about">
+      <h2>Über Uns</h2>
+      <p>HCLR bietet ein professionelles, faires und strukturiertes Spielerlebnis auf Roblox mit Schwerpunkt auf realistischem Roleplay in Hamburg. Unser engagiertes Team entwickelt den Server kontinuierlich weiter, um höchste Qualität und Spaß für alle Spieler zu garantieren.</p>
+    </section>
+
+    <section id="factions">
+      <h2>Fraktionen</h2>
+      <div class="factions">
+        <article class="card">
+          <h3>Polizei Hamburg</h3>
+          <p>Die Polizei sorgt für Ordnung und Sicherheit in Hamburg mit realistischen Einsatzszenarien und professionellen Abläufen.</p>
+        </article>
+        <article class="card">
+          <h3>Feuerwehr Hamburg</h3>
+          <p>Unsere Feuerwehr rettet Leben, bekämpft Brände und unterstützt bei Katastrophen im gesamten Stadtgebiet.</p>
+        </article>
+        <article class="card">
+          <h3>Rettungsdienst Hamburg</h3>
+          <p>Der Rettungsdienst gewährleistet medizinische Notfallversorgung und sorgt für schnelle Hilfe bei Unfällen und Notfällen.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="rules">
+      <h2>Regelwerk</h2>
+      <p>Unser vollständiges Regelwerk findest du jederzeit aktuell im Discord. Bitte lese es aufmerksam, um ein faires und spaßiges RP für alle zu gewährleisten.</p>
+      <a href="https://discord.gg/YFHg2mHFrV" target="_blank" class="btn" rel="noopener noreferrer">Zum Regelwerk & Discord</a>
+    </section>
+
+    <section id="apply">
+      <h2>Bewerbung</h2>
+      <p>Du willst Teil von HCLR werden? Bewirb dich über unseren Discord und finde deinen Platz in einer unserer Fraktionen oder im Staff-Team.</p>
+      <a href="https://discord.gg/mgYU59A6yf" target="_blank" class="btn" rel="noopener noreferrer">Jetzt bewerben</a>
+    </section>
+  </main>
+
+  <footer>
+    &copy; 2025 Hamburg City Life Roleplay – Alle Rechte vorbehalten.
+  </footer>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <table border="1">
+  <tr>
+    <th>Person</th>
+    <th>Note</th>
+  </tr>
+  <tr>
+    <td>M.A</td>
+    <td><input type="number" class="noteInput"></td>
+  </tr>
+  <tr>
+    <td>F.E</td>
+    <td><input type="number" class="noteInput"></td>
+  </tr>
+  <tr>
+    <td>E.N</td>
+    <td><input type="number" class="noteInput"></td>
+  </tr>
+  <tr>
+    <td>Durchschnitt</td>
+    <td id="durchschnitt"></td>
+  </tr>
+</table>
+
+<!-- Button zum Berechnen -->
+<button onclick="berechneDurchschnitt()">Durchschnitt berechnen</button>
+
+<script>
+function berechneDurchschnitt() {
+  const notenInputs = document.querySelectorAll('.noteInput');
+  let summe = 0;
+  let anzahl = 0;
+
+  notenInputs.forEach(input => {
+    const wert = parseFloat(input.value);
+    if (!isNaN(wert)) {
+      summe += wert;
+      anzahl++;
+    }
+  });
+
+  const durchschnitt = (anzahl > 0) ? (summe / anzahl).toFixed(2) : '-';
+  document.getElementById('durchschnitt').textContent = durchschnitt;
+}
+</script>
+
+</body>
+</html>

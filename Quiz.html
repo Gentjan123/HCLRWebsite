@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz-Web</title>
+    <style>
+        .uberschrift {
+            font-size: 35px;
+            text-align: center;
+            text-decoration: underline double;
+        }
+        .feedback {
+            font-size: 22px;
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .feedback2 {
+            font-size: 22px;
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+            .feedback3 {
+            font-size: 22px;
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .feedback4 {
+            font-size: 22px;
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+         .feedback5 {
+            font-size: 22px;
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="uberschrift"> Das Quiz </div>
+    <br><br><br>
+    <div class="Frage">
+        <p>1. Wie viele Bundesländer hat Deutschland?</p>
+        <input type="radio" name="frage1" value="16"> 16<br>
+        <input type="radio" name="frage1" value="14"> 14<br>
+        <input type="radio" name="frage1" value="12"> 12<br>
+        <input type="radio" name="frage1" value="10"> 10<br>
+        <br>
+        <button onclick="pruefeAntwort()">Antwort prüfen</button>
+        <div id="feedback" class="feedback"></div>
+        <br>
+        <p>2. Wie viele Tage hat das Schaltjahr</p>
+        <input type="radio" name="frage2" value="365"> 365<br>
+        <input type="radio" name="frage2" value="366"> 366<br>
+        <input type="radio" name="frage2" value="Keine"> Keine<br>
+        <input type="radio" name="frage2" value="360"> 364<br>
+        <button onclick="pruefeAntwort2()">Antwort prüfen</button>
+        <div id="feedback2" class="feedback2"></div>
+        <br>
+        <p>3. Wann fiel die Berliner Mauer</p>
+        <input type="radio" name="frage3" value="1978"> 1978<br>
+        <input type="radio" name="frage3" value="1989"> 1989<br>
+        <input type="radio" name="frage3" value="1972"> 1972<br>
+        <input type="radio" name="frage3" value="1990"> 1990<br>
+        <button onclick="pruefeAntwort3()">Antwort prüfen</button>
+        <div id="feedback3" class="feedback3"></div>
+        <p>4. Wie viele Sekunden dauert es bis 5 Stunden vergangen sind?</p>
+        <input type="radio" name="frage4" value="18.000"> 18.000<br>
+        <input type="radio" name="frage4" value="3.600"> 3.600<br>
+        <input type="radio" name="frage4" value="50.0000"> 50.0000<br>
+        <input type="radio" name="frage4" value="4.000"> 4.000<br>
+        <button onclick="pruefeAntwort4()">Antwort prüfen</button>
+        <div id="feedback4" class="feedback4"></div>
+         <p>5. Für was steht "www"?</p>
+       <input type="text" name="frage5" id="frage5">
+        <button onclick="pruefeAntwort5()">Antwort prüfen</button>
+        <div id="feedback5" class="feedback5"></div>
+    </div>
+    <script>
+
+         function pruefeAntwort() {
+            const antwort = document.querySelector('input[name="frage1"]:checked');
+            const feedback = document.getElementById('feedback');
+            if (!antwort) {
+                feedback.textContent = "Bitte eine Antwort auswählen!";
+                feedback.style.color = "orange";
+                return;
+            }
+            if (antwort.value === "16") {
+                feedback.textContent = "Richtig!";
+                feedback.style.color = "green";
+            } else {
+                feedback.textContent = "Falsch!";
+                feedback.style.color = "red";
+            }
+        }
+        function pruefeAntwort2() {
+            const antwort = document.querySelector('input[name="frage2"]:checked');
+            const feedback2 = document.getElementById('feedback2');
+            if (!antwort) {
+                feedback2.textContent = "Bitte eine Antwort auswählen!";
+                feedback2.style.color = "orange";
+                return;
+            }
+            if (antwort.value === "366") {
+                feedback2.textContent = "Richtig!";
+                feedback2.style.color = "green";
+            } else {
+                feedback2.textContent = "Falsch!";
+                feedback2.style.color = "red";
+            }
+        }
+         function pruefeAntwort3() {
+            const antwort = document.querySelector('input[name="frage3"]:checked');
+            const feedback3 = document.getElementById('feedback3');
+            if (!antwort) {
+                feedback3.textContent = "Bitte eine Antwort auswählen!";
+                feedback3.style.color = "orange";
+                return;
+            }
+            if (antwort.value === "1989") {
+                feedback3.textContent = "Richtig!";
+                feedback3.style.color = "green";
+            } else {
+                feedback3.textContent = "Falsch!";
+                feedback3.style.color = "red";
+            }
+        }
+        function pruefeAntwort4() {
+            const antwort = document.querySelector('input[name="frage4"]:checked');
+            const feedback4 = document.getElementById('feedback4');
+            if (!antwort) {
+                feedback4.textContent = "Bitte eine Antwort auswählen!";
+                feedback4.style.color = "orange";
+                return;
+            }
+            if (antwort.value === "18.000") {
+                feedback4.textContent = "Richtig!";
+                feedback4.style.color = "green";
+            } else {
+                feedback4.textContent = "Falsch!";
+                feedback4.style.color = "red";
+            }
+            
+        }
+        function pruefeAntwort5() {
+    const antwort = document.getElementById('frage5').value.trim().toLowerCase();
+    const feedback5 = document.getElementById('feedback5');
+
+    if (!antwort) {
+        feedback5.textContent = "Bitte eine Antwort eingeben!";
+        feedback5.style.color = "orange";
+        return;
+    }
+    if (antwort === "world wide web") {
+        feedback5.textContent = "Richtig!";
+        feedback5.style.color = "green";
+    } else {
+        feedback5.textContent = "Falsch!";
+        feedback5.style.color = "red";
+    }
+}
+
+    </script>
+</body>
+</html>

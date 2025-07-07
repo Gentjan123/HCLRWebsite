@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To do Liste</title>
+    <style>
+        body{
+            font-family: arial;
+            font-size: 40px;
+            text-align: center;
+        }
+        input[type="text"] {
+            padding: 8px;
+            width: 450px;
+            font-size: 15px;
+        }
+        li {
+            font-size: 20px;
+            text-align: left;
+            list-style: none;
+            margin-bottom: 10px;
+        }
+        button.clear-btn {
+            background-color: #5e0404;
+            color: white;
+            border: none;
+            padding: 10px 10px;
+            font-size: 18px;
+            margin-top: 25px;
+            cursor: pointer;
+        }
+        .delete-btn {
+            background-color: #ff2222;
+            color: white;
+            border: none;
+            margin-left: 30px;
+            padding: 5px 15px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <span style="text-decoration: underline;">To do Liste</span>
+    <br><br>
+    <input type="text" id="todoInput" placeholder="Was muss noch erledigt werden?"> 
+    <button onclick="addTodo()">add</button>
+    <ul id="todolist"></ul>
+    <button class="clear-btn" onclick="clearAll()">Clear</button>
+
+    <script>
+        //Aufgabe hinzufügen 
+        function addTodo(){
+            const input = document.getElementById('todoInput');
+            const text = input.value.trim();
+            if (text === "") return;
+            const li = document.createElement('li'); 
+            li.textContent = text;
+
+            // Durchstreichen beim Klicken (außer auf den Delete-Button)
+            li.onclick = function(e){
+                if(e.target.tagName !== 'BUTTON') {
+                    li.style.textDecoration = li.style.textDecoration === 'line-through' ? '' : 'line-through';
+                }
+            };
+
+            // Delete-Button erstellen und an li anhängen
+            const delBtn = document.createElement('button');
+            delBtn.textContent = 'delete';
+            delBtn.className = 'delete-btn';
+            delBtn.onclick = function(e){
+                e.stopPropagation();
+                li.remove();
+            };
+            li.appendChild(delBtn);
+
+            document.getElementById('todolist').appendChild(li);
+            input.value = ""; 
+        }
+
+        // Alle Aufgaben löschen mit Bestätigung
+        function clearAll() {
+            if (confirm("Willst du wirklich alle Aufgaben löschen?")) {
+                document.getElementById('todolist').innerHTML = "";
+            }
+        }
+    </script>
+</body>
+</html>

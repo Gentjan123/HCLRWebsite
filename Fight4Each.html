@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Wissenschaftsstation: Wellenmodus</title>
+    <style>
+        body { background: #222; color: #fff; text-align: center; }
+        canvas { background: #333; margin-top: 30px; border: 2px solid #fff; }
+        #info { margin-top: 20px; }
+        #menu { margin-top: 60px; }
+        .menu-btn {
+            background: #444;
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 18px 60px;
+            font-size: 2em;
+            margin: 20px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: background 0.2s;
+        }
+        .menu-btn:hover {
+            background: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Wissenschaftsstation</h1>
+    <div id="menu">
+        <button class="menu-btn" onclick="startSingle()">Spielen</button>
+        <button class="menu-btn" onclick="start1vs1()">1vs1</button>
+        <button class="menu-btn" onclick="startWave()">Wellenmodus</button>
+    </div>
+    <div id="info" style="display:none"></div>
+    <canvas id="game" width="900" height="600" style="display:none"></canvas>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const menu = document.getElementById('menu');
+        const info = document.getElementById('info');
+
+        let mode = "menu"; // "single", "1vs1", "wave"
+        let gameActive = false;
+
+        // --- Pause-Menü Variablen ---
+        let paused = false;
+        let pauseMenuActive = false;
+        let pauseMenuSelection = 0;
+        const pauseMenuOptions = ["Fortsetzen", "Shop", "Neustarten", "Hauptmenü"];
+
+        // --- Menü ---
+        function showMenu() {
+            menu.style.display = "";
+            canvas.style.display = "none";
+            info.style.display = "none";
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            mode = "menu";
+            gameActive = false;
+        }
+
+        function startSingle() {
+            mode = "single";
+            menu.style.display = "none";
+            canvas.style.display = "";
+            info.style.display = "";
+            info.innerText = "Steuerung: Pfeiltasten = bewegen, Leertaste = schießen";
+            gameActive = true;
+            startGame();
+        }
+
+        function start1vs1() {
+            mode = "1vs1";
+            menu.style.display = "none";
+            canvas.style.display = "";
+            info.style.display = "";
+            info.innerText = "Spieler 1: W/A/S/D bewegen, E schießen | Spieler 2: Pfeiltasten bewegen, Leertaste schießen";
+            gameActive = true;
+            startGame();
+        }
+
+        function startWave() {
+            mode = "wave";
+            menu.style.display = "none";
+            canvas.style.display = "";
+            info.style.display = "";
+            info.innerText = "Wellenmodus: Pfeiltasten = bewegen, Leertaste = schießen";
+            gameActive = true;
+            startWaveGame();
+        }
+
+        // --- Spielfeld-Design ---
+        function drawStation() {
+            ctx.fillStyle = "#444";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = "#888";
+            for (let i = 0; i < 10; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * 60);
+                ctx.lineTo(canvas.width, i * 60);
+                ctx.stroke();
+            }
+            for (let i = 0; i < 15; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * 60, 0);
+                ctx.lineTo(i * 60, canvas.height);
+                ctx.stroke();
+            }
+        }
+
+        // --- Spielvariablen ---
+        let player, player2, enemies, boss, bossBullets, bullets, bullets2, shootCooldown, shootCooldown2;
+        let wave = 1;
+        let waveBoss = null;
+        let waveActive = false;
+        let waveWin = false;
+        let waveTimer = 60; // Sekunden
+        let waveTimerStart = 0;
+        let bombs = [];
+
+        let points = 0;
+        let lifeUpgradeLevel = 0;
+        let damageUpgradeLevel = 0;
+        let upgradeMenuActive = false;
+
+        // Upgrades wie gewünscht
+        const lifeUpgradeCosts = [50, 150, 300];
+        const lifeUpgradeValues = [2, 3, 5];
+        const damageUpgradeCosts = [350];
+        const damageUpgradeValues = [1.5];
+
+        function resetGameVars() {
+            player = { x: 100, y: 300, w: 32, h: 32, color: 'deepskyblue', hp: 8, name: "Gentjan", maxHp: 8 };
+            player2 = { x: 700, y: 300, w: 32, h: 32, color: 'lime', hp: 5, name: "Player2" };
+            enemies = [];
+            boss = {
+                x: 700, y: 250, w: 56, h: 56, color: 'red', hp: 10, active: false, dir: 0, shootCooldown: 0
+            };
+            bossBullets = [];
+            bullets = [];
+            bullets2 = [];
+            shootCooldown = 0;
+            shootCooldown2 = 0;
+        }
+
+        function resetWaveTimer() {
+            if (wave >= 5) {
+                waveTimer = 90;
+            } else {
+                waveTimer = 60;
+            }
+            waveTimerStart = Date.now();
+        }
+
+        function updateWaveTimer() {
+            let elapsed = Math.floor((Date.now() - waveTimerStart) / 1000);
+            if (wave >= 5) {
+                waveTimer = Math.max(0, 90 - elapsed);
+            } else {
+                waveTimer = Math.max(0, 60 - elapsed);
+            }
+        }
+
+        function resetUpgrades() {
+            lifeUpgradeLevel = 0;
+            damageUpgradeLevel = 0;
+        }
+
+        // --- Steuerung ---
+        let keys = {};
+        document.addEventListener('keydown', e => {
+            keys[e.key.toLowerCase()] = true;
+        });
+        document.addEventListener('keyup', e => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // --- PAUSE-TASTE UND PAUSE-MENÜ ---
+        document.addEventListener('keydown', function(e) {
+            if (e.key.toLowerCase() === 'p' && !pauseMenuActive && !upgradeMenuActive && gameActive) {
+                paused = true;
+                pauseMenuActive = true;
+                pauseMenuSelection = 0;
+                draw();
+                drawPauseMenu();
+            } else if (pauseMenuActive) {
+                if (e.key === "ArrowUp") {
+                    pauseMenuSelection = (pauseMenuSelection + pauseMenuOptions.length - 1) % pauseMenuOptions.length;
+                    draw();
+                    drawPauseMenu();
+                }
+                if (e.key === "ArrowDown") {
+                    pauseMenuSelection = (pauseMenuSelection + 1) % pauseMenuOptions.length;
+                    draw();
+                    drawPauseMenu();
+                }
+                if (e.key === "Enter") {
+                    if (pauseMenuSelection === 0) { // Fortsetzen
+                        paused = false;
+                        pauseMenuActive = false;
+                        requestAnimationFrame(gameLoop);
+                    } else if (pauseMenuSelection === 1) { // Shop
+                        pauseMenuActive = false;
+                        openUpgradeMenu();
+                    } else if (pauseMenuSelection === 2) { // Neustarten
+                        paused = false;
+                        pauseMenuActive = false;
+                        if (mode === "wave") startWaveGame();
+                        else startGame();
+                    } else if (pauseMenuSelection === 3) { // Hauptmenü
+                        paused = false;
+                        pauseMenuActive = false;
+                        showMenu();
+                    }
+                }
+                if (e.key === "Escape") {
+                    paused = false;
+                    pauseMenuActive = false;
+                    requestAnimationFrame(gameLoop);
+                }
+            }
+        });
+
+        // --- Mausbedienung für Pause-Menü ---
+        canvas.addEventListener('mousedown', function(e) {
+            if (!pauseMenuActive) return;
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            if (mx >= 200 && mx <= 700 && my >= 260 && my <= 260 + pauseMenuOptions.length * 50) {
+                const idx = Math.floor((my - 260) / 50);
+                pauseMenuSelection = idx;
+                if (pauseMenuSelection === 0) { // Fortsetzen
+                    paused = false;
+                    pauseMenuActive = false;
+                    requestAnimationFrame(gameLoop);
+                } else if (pauseMenuSelection === 1) { // Shop
+                    pauseMenuActive = false;
+                    openUpgradeMenu();
+                } else if (pauseMenuSelection === 2) { // Neustarten
+                    paused = false;
+                    pauseMenuActive = false;
+                    if (mode === "wave") startWaveGame();
+                    else startGame();
+                } else if (pauseMenuSelection === 3) { // Hauptmenü
+                    paused = false;
+                    pauseMenuActive = false;
+                    showMenu();
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', function(e) {
+            if (!pauseMenuActive) return;
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            if (mx >= 200 && mx <= 700 && my >= 260 && my <= 260 + pauseMenuOptions.length * 50) {
+                pauseMenuSelection = Math.floor((my - 260) / 50);
+                draw();
+                drawPauseMenu();
+            }
+        });
+
+        function drawPauseMenu() {
+            ctx.save();
+            ctx.globalAlpha = 0.95;
+            ctx.fillStyle = '#222';
+            ctx.fillRect(200, 150, 500, 300);
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = '#fff';
+            ctx.strokeRect(200, 150, 500, 300);
+            ctx.fillStyle = '#fff';
+            ctx.font = '32px Arial';
+            ctx.fillText('Pause', 450, 200);
+            ctx.font = '26px Arial';
+            for (let i = 0; i < pauseMenuOptions.length; i++) {
+                ctx.fillStyle = (i === pauseMenuSelection) ? '#0f0' : '#fff';
+                ctx.fillText(pauseMenuOptions[i], 450, 260 + i * 50);
+            }
+            ctx.restore();
+        }
+
+        // --- Einzelspieler ---
+        function movePlayer() {
+            if (keys['arrowup'] && player.y > 0) player.y -= 5;
+            if (keys['arrowdown'] && player.y < canvas.height - player.h) player.y += 5;
+            if (keys['arrowleft'] && player.x > 0) player.x -= 5;
+            if (keys['arrowright'] && player.x < canvas.width - player.w) player.x += 5;
+        }
+
+        // --- 1vs1 ---
+        function movePlayer1() {
+            if (keys['w'] && player.y > 0) player.y -= 5;
+            if (keys['s'] && player.y < canvas.height - player.h) player.y += 5;
+            if (keys['a'] && player.x > 0) player.x -= 5;
+            if (keys['d'] && player.x < canvas.width - player.w) player.x += 5;
+        }
+        function movePlayer2() {
+            if (keys['arrowup'] && player2.y > 0) player2.y -= 5;
+            if (keys['arrowdown'] && player2.y < canvas.height - player2.h) player2.y += 5;
+            if (keys['arrowleft'] && player2.x > 0) player2.x -= 5;
+            if (keys['arrowright'] && player2.x < canvas.width - player2.w) player2.x += 5;
+        }
+
+        // --- Gegner ---
+        function moveEnemies() {
+            enemies.forEach(e => {
+                if (e.hp <= 0) return;
+                if (Math.random() < 0.02) e.dir = Math.floor(Math.random() * 4);
+                // Geschwindigkeit je nach Typ und Welle (langsamer gemacht!)
+                let speed = e.speed || 2;
+                if (wave >= 9) {
+                    if (speed === 4) speed = 3;
+                    if (speed === 6) speed = 4;
+                    if (speed === 7) speed = 5;
+                    if (speed === 9) speed = 6;
+                }
+                switch (e.dir) {
+                    case 0: if (e.y > 0) e.y -= speed; break;
+                    case 1: if (e.y < canvas.height - e.h) e.y += speed; break;
+                    case 2: if (e.x > 0) e.x -= speed; break;
+                    case 3: if (e.x < canvas.width - e.w) e.x += speed; break;
+                }
+                // Gegner greifen an, wenn nah am Spieler
+                if (mode === "single" || mode === "wave") {
+                    if (Math.abs(e.x - player.x) < e.w && Math.abs(e.y - player.y) < e.h && Math.random() < 0.02) {
+                        player.hp--;
+                    }
+                }
+                if (mode === "1vs1") {
+                    if (Math.abs(e.x - player.x) < 32 && Math.abs(e.y - player.y) < 32 && Math.random() < 0.02) {
+                        player.hp--;
+                    }
+                    if (Math.abs(e.x - player2.x) < 32 && Math.abs(e.y - player2.y) < 32 && Math.random() < 0.02) {
+                        player2.hp--;
+                    }
+                }
+            });
+        }
+
+        // --- Schießen ---
+        function shoot() {
+            if (mode === "single" || mode === "wave") {
+                if (keys[' '] && shootCooldown === 0) {
+                    bullets.push({
+                        x: player.x + player.w,
+                        y: player.y + player.h / 2 - 3,
+                        w: 12,
+                        h: 6,
+                        speed: 10
+                    });
+                    shootCooldown = 12;
+                }
+                if (shootCooldown > 0) shootCooldown--;
+            }
+            if (mode === "1vs1") {
+                // Spieler 1 (E)
+                if (keys['e'] && shootCooldown === 0) {
+                    bullets.push({
+                        x: player.x + player.w,
+                        y: player.y + player.h / 2 - 3,
+                        w: 12,
+                        h: 6,
+                        speed: 10
+                    });
+                    shootCooldown = 12;
+                }
+                // Spieler 2 (Leertaste)
+                if (keys[' '] && shootCooldown2 === 0) {
+                    bullets2.push({
+                        x: player2.x,
+                        y: player2.y + player2.h / 2 - 3,
+                        w: 12,
+                        h: 6,
+                        speed: -10
+                    });
+                    shootCooldown2 = 12;
+                }
+                if (shootCooldown > 0) shootCooldown--;
+                if (shootCooldown2 > 0) shootCooldown2--;
+            }
+        }
+
+        function moveBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].x += bullets[i].speed;
+                if (bullets[i].x > canvas.width) bullets.splice(i, 1);
+            }
+            for (let i = bullets2.length - 1; i >= 0; i--) {
+                bullets2[i].x += bullets2[i].speed;
+                if (bullets2[i].x + bullets2[i].w < 0) bullets2.splice(i, 1);
+            }
+        }
+
+        function bulletHits() {
+            if (mode === "single" || mode === "wave") {
+                bullets.forEach((b, bi) => {
+                    enemies.forEach((e, ei) => {
+                        if (
+                            e.hp > 0 &&
+                            b.x < e.x + e.w &&
+                            b.x + b.w > e.x &&
+                            b.y < e.y + e.h &&
+                            b.y + b.h > e.y
+                        ) {
+                            let dmg = 1;
+                            if (damageUpgradeLevel > 0) dmg = damageUpgradeValues[0];
+                            e.hp -= dmg;
+                            if (e.hp <= 0) points++;
+                            bullets.splice(bi, 1);
+                        }
+                    });
+                    if (boss.active && boss.hp > 0 &&
+                        b.x < boss.x + boss.w &&
+                        b.x + b.w > boss.x &&
+                        b.y < boss.y + boss.h &&
+                        b.y + b.h > boss.y
+                    ) {
+                        let dmg = 1;
+                        if (damageUpgradeLevel > 0) dmg = damageUpgradeValues[0];
+                        boss.hp -= dmg;
+                        if (boss.hp <= 0) points++;
+                        bullets.splice(bi, 1);
+                    }
+                    if (waveBoss && waveBoss.active && waveBoss.hp > 0 &&
+                        b.x < waveBoss.x + waveBoss.w &&
+                        b.x + b.w > waveBoss.x &&
+                        b.y < waveBoss.y + waveBoss.h &&
+                        b.y + b.h > waveBoss.y
+                    ) {
+                        let dmg = 1;
+                        if (damageUpgradeLevel > 0) dmg = damageUpgradeValues[0];
+                        waveBoss.hp -= dmg;
+                        if (waveBoss.hp <= 0) points++;
+                        bullets.splice(bi, 1);
+                    }
+                });
+            }
+            if (mode === "1vs1") {
+                bullets.forEach((b, bi) => {
+                    if (
+                        b.x < player2.x + player2.w &&
+                        b.x + b.w > player2.x &&
+                        b.y < player2.y + player2.h &&
+                        b.y + b.h > player2.y
+                    ) {
+                        player2.hp--;
+                        bullets.splice(bi, 1);
+                    }
+                });
+                bullets2.forEach((b, bi) => {
+                    if (
+                        b.x < player.x + player.w &&
+                        b.x + b.w > player.x &&
+                        b.y < player.y + player.h &&
+                        b.y + b.h > player.y
+                    ) {
+                        player.hp--;
+                        bullets2.splice(bi, 1);
+                    }
+                });
+            }
+        }
+
+        // --- Boss ---
+        function moveBoss() {
+            if ((!boss.active || boss.hp <= 0) && !(waveBoss && waveBoss.active && waveBoss.hp > 0)) return;
+            let b = boss.active ? boss : waveBoss;
+            if (!b) return;
+            let targetY = player.y + player.h / 2;
+            if (targetY < b.y + b.h / 2) b.y -= 2;
+            if (targetY > b.y + b.h / 2) b.y += 2;
+            b.y = Math.max(0, Math.min(canvas.height - b.h, b.y));
+            // Alle Bosse schießen große Strahlen
+            if (b.shootCooldown === 0) {
+                bossBullets.push({
+                    x: b.x,
+                    y: b.y + b.h / 2 - 8,
+                    w: 24,
+                    h: 16,
+                    speed: -8
+                });
+                b.shootCooldown = 30;
+            }
+            if (b.shootCooldown > 0) b.shootCooldown--;
+        }
+
+        function moveBossBullets() {
+            for (let i = bossBullets.length - 1; i >= 0; i--) {
+                bossBullets[i].x += bossBullets[i].speed;
+                if (bossBullets[i].x + bossBullets[i].w < 0) bossBullets.splice(i, 1);
+            }
+        }
+
+        function bossBulletHits() {
+            bossBullets.forEach((b, bi) => {
+                if (
+                    b.x < player.x + player.w &&
+                    b.x + b.w > player.x &&
+                    b.y < player.y + player.h &&
+                    b.y + b.h > player.y
+                ) {
+                    player.hp--;
+                    bossBullets.splice(bi, 1);
+                }
+            });
+        }
+
+        // --- Bomben ---
+        function moveBombs() {
+            for (let i = bombs.length - 1; i >= 0; i--) {
+                bombs[i].x -= bombs[i].speed;
+                if (bombs[i].x + bombs[i].r < 0) bombs.splice(i, 1);
+            }
+        }
+
+        function bombHits() {
+            for (let i = bombs.length - 1; i >= 0; i--) {
+                let b = bombs[i];
+                let dx = Math.max(player.x, Math.min(b.x, player.x + player.w));
+                let dy = Math.max(player.y, Math.min(b.y, player.y + player.h));
+                let dist = Math.sqrt((b.x - dx) ** 2 + (b.y - dy) ** 2);
+                if (dist < b.r) {
+                    player.hp--;
+                    bombs.splice(i, 1);
+                    continue;
+                }
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    let bullet = bullets[j];
+                    let dx2 = b.x - (bullet.x + bullet.w / 2);
+                    let dy2 = b.y - (bullet.y + bullet.h / 2);
+                    let dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+                    if (dist2 < b.r) {
+                        player.hp--;
+                        bombs.splice(i, 1);
+                        bullets.splice(j, 1);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // --- Zeichnen ---
+        function draw() {
+            drawStation();
+            ctx.font = "16px Arial";
+            if (mode === "wave") {
+                ctx.fillStyle = "#fff";
+                ctx.font = "22px Arial";
+                ctx.textAlign = "left";
+                ctx.fillText("Zeit: " + waveTimer + "s", 20, 40);
+                ctx.textAlign = "right";
+                let aliveEnemies = enemies.filter(e => e.hp > 0).length;
+                if (waveBoss && waveBoss.active && waveBoss.hp > 0) aliveEnemies++;
+                ctx.fillText("Gegner: " + aliveEnemies, 880, 40);
+                ctx.textAlign = "left";
+                ctx.font = "22px Arial";
+                ctx.fillStyle = "#ff0";
+                ctx.fillText("Points: " + points, 20, 590);
+                ctx.textAlign = "center";
+            }
+            if (mode === "wave") {
+                bombs.forEach(b => {
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r, 0, 2 * Math.PI);
+                    ctx.fillStyle = "#f80";
+                    ctx.fill();
+                    ctx.strokeStyle = "#fff";
+                    ctx.stroke();
+                });
+            }
+            if (mode === "single" || mode === "wave") {
+                ctx.fillStyle = player.color;
+                ctx.fillRect(player.x, player.y, player.w, player.h);
+                ctx.fillStyle = "#fff";
+                ctx.fillText(player.name + " (" + player.hp + ")", player.x - 10, player.y - 10);
+                ctx.fillStyle = "#222";
+                ctx.fillRect(player.x + player.w - 2, player.y + player.h / 2 - 4, 10, 8);
+                ctx.fillStyle = "#ff0";
+                bullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+                enemies.forEach(e => {
+                    if (e.hp > 0) {
+                        ctx.fillStyle = e.strong ? "#b36b00" : e.color;
+                        ctx.fillRect(e.x, e.y, e.w, e.h);
+                        ctx.fillStyle = "#fff";
+                        ctx.font = "14px Arial";
+                        ctx.fillText(e.strong ? "Starker Arian" : "Arian", e.x - 5, e.y - 8);
+                    }
+                });
+                if (boss.active && boss.hp > 0) {
+                    ctx.fillStyle = boss.color;
+                    ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
+                    ctx.fillStyle = "#fff";
+                    ctx.font = "18px Arial";
+                    ctx.fillText("BOSS", boss.x + boss.w / 2 - 20, boss.y - 10);
+                    ctx.font = "16px Arial";
+                    ctx.fillText("HP: " + boss.hp, boss.x + boss.w / 2 - 18, boss.y + boss.h + 18);
+                    ctx.fillStyle = "#222";
+                    ctx.fillRect(boss.x - 10, boss.y + boss.h / 2 - 8, 10, 16);
+                }
+                if (waveBoss && waveBoss.active && waveBoss.hp > 0) {
+                    ctx.fillStyle = waveBoss.color;
+                    ctx.fillRect(waveBoss.x, waveBoss.y, waveBoss.w, waveBoss.h);
+                    ctx.fillStyle = "#fff";
+                    ctx.font = "18px Arial";
+                    ctx.fillText(waveBoss.name, waveBoss.x + waveBoss.w / 2 - 30, waveBoss.y - 10);
+                    ctx.font = "16px Arial";
+                    ctx.fillText("HP: " + waveBoss.hp, waveBoss.x + waveBoss.w / 2 - 18, waveBoss.y + waveBoss.h + 18);
+                    ctx.fillStyle = "#222";
+                    ctx.fillRect(waveBoss.x - 10, waveBoss.y + waveBoss.h / 2 - 8, 10, 16);
+                }
+                ctx.fillStyle = "#f44";
+                bossBullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+                if (mode === "wave" && !waveWin) {
+                    ctx.fillStyle = "#fff";
+                    ctx.font = "22px Arial";
+                    ctx.fillText("Welle " + wave, 400, 40);
+                }
+            }
+            if (mode === "1vs1") {
+                ctx.fillStyle = player.color;
+                ctx.fillRect(player.x, player.y, player.w, player.h);
+                ctx.fillStyle = "#fff";
+                ctx.fillText("Gentjan (" + player.hp + ")", player.x - 10, player.y - 10);
+                ctx.fillStyle = "#222";
+                ctx.fillRect(player.x + player.w - 2, player.y + player.h / 2 - 4, 10, 8);
+                ctx.fillStyle = player2.color;
+                ctx.fillRect(player2.x, player2.y, player2.w, player2.h);
+                ctx.fillStyle = "#fff";
+                ctx.fillText("Player2 (" + player2.hp + ")", player2.x - 10, player2.y - 10);
+                ctx.fillStyle = "#222";
+                ctx.fillRect(player2.x - 10, player2.y + player2.h / 2 - 4, 10, 8);
+                ctx.fillStyle = "#ff0";
+                bullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+                ctx.fillStyle = "#0ff";
+                bullets2.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+            }
+            if (waveWin) {
+                ctx.fillStyle = "#0f0";
+                ctx.font = "40px Arial";
+                ctx.fillText("Du hast den Wellenmodus gewonnen!", 150, 300);
+            }
+        }
+
+        function drawUpgrades() {
+            if (!upgradeMenuActive) return;
+            ctx.save();
+            ctx.globalAlpha = 0.95;
+            ctx.fillStyle = '#222';
+            ctx.fillRect(120, 120, 660, 360);
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = '#fff';
+            ctx.strokeRect(120, 120, 660, 360);
+            ctx.fillStyle = '#fff';
+            ctx.font = '28px Arial';
+            ctx.fillText('Upgrades kaufen', 450, 170);
+            ctx.font = '20px Arial';
+            ctx.fillText('Leben:', 200, 220);
+            for (let i = 0; i < 3; i++) {
+                let cost = lifeUpgradeCosts[i];
+                let val = lifeUpgradeValues[i];
+                let owned = lifeUpgradeLevel > i ? '✓' : '';
+                ctx.fillStyle = points >= cost && lifeUpgradeLevel === i ? '#0f0' : '#fff';
+                ctx.fillText(`Stufe ${i+1}: ${cost} Points +${val} Leben ${owned}`, 250, 220 + i*32);
+            }
+            ctx.fillStyle = '#fff';
+            ctx.fillText('Stärke:', 200, 340);
+            for (let i = 0; i < 1; i++) {
+                let cost = damageUpgradeCosts[i];
+                let val = damageUpgradeValues[i];
+                let owned = damageUpgradeLevel > i ? '✓' : '';
+                ctx.fillStyle = points >= cost && damageUpgradeLevel === i ? '#0f0' : '#fff';
+                ctx.fillText(`Stufe ${i+1}: ${cost} Points 1,5x Schaden ${owned}`, 250, 340 + i*32);
+            }
+            ctx.fillStyle = '#fff';
+            ctx.font = '18px Arial';
+            ctx.fillText('Drücke 1-3 für Leben, 4 für Stärke, ESC zum Schließen', 450, 480);
+            ctx.restore();
+        }
+
+        function openUpgradeMenu() {
+            upgradeMenuActive = true;
+        }
+        function closeUpgradeMenu() {
+            upgradeMenuActive = false;
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (!upgradeMenuActive) return;
+            if (e.key === 'Escape') {
+                closeUpgradeMenu();
+            }
+            if (e.key >= '1' && e.key <= '3') {
+                let idx = parseInt(e.key) - 1;
+                if (lifeUpgradeLevel === idx && points >= lifeUpgradeCosts[idx]) {
+                    points -= lifeUpgradeCosts[idx];
+                    player.maxHp += lifeUpgradeValues[idx];
+                    player.hp += lifeUpgradeValues[idx];
+                    lifeUpgradeLevel++;
+                }
+            }
+            if (e.key === '4') {
+                if (damageUpgradeLevel === 0 && points >= damageUpgradeCosts[0]) {
+                    points -= damageUpgradeCosts[0];
+                    damageUpgradeLevel = 1;
+                }
+            }
+        });
+
+        // --- Game Over ---
+        function checkGameOver() {
+            if (mode === "single") {
+                if (player.hp <= 0) {
+                    ctx.fillStyle = "#f00";
+                    ctx.font = "40px Arial";
+                    ctx.fillText("Game Over!", 350, 300);
+                    setTimeout(showMenu, 2000);
+                    return true;
+                }
+                if (boss.active && boss.hp <= 0) {
+                    ctx.fillStyle = "#0f0";
+                    ctx.font = "40px Arial";
+                    ctx.fillText("Du hast gewonnen!", 300, 300);
+                    setTimeout(showMenu, 2000);
+                    return true;
+                }
+            }
+            if (mode === "1vs1") {
+                if (player.hp <= 0) {
+                    ctx.fillStyle = "#f00";
+                    ctx.font = "40px Arial";
+                    ctx.fillText("Player 2 gewinnt!", 300, 300);
+                    setTimeout(showMenu, 2000);
+                    return true;
+                }
+                if (player2.hp <= 0) {
+                    ctx.fillStyle = "#0f0";
+                    ctx.font = "40px Arial";
+                    ctx.fillText("Gentjan gewinnt!", 300, 300);
+                    setTimeout(showMenu, 2000);
+                    return true;
+                }
+            }
+            if (mode === "wave") {
+                if (player.hp <= 0) {
+                    ctx.fillStyle = "#f00";
+                    ctx.font = "40px Arial";
+                    ctx.fillText("Game Over!", 350, 300);
+                    setTimeout(showMenu, 2000);
+                    return true;
+                }
+                if (waveWin) {
+                    setTimeout(showMenu, 4000);
+                    return true;
+                }
+                if (waveTimer <= 0) {
+                    ctx.fillStyle = "#f00";
+                    ctx.font = "40px Arial";
+                    ctx.fillText("Zeit abgelaufen!", 300, 300);
+                    setTimeout(showMenu, 2000);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // --- Wellenmodus ---
+        function startWaveGame() {
+            player = { x: 100, y: 300, w: 32, h: 32, color: 'deepskyblue', hp: 8, name: "Gentjan", maxHp: 8 };
+            enemies = [];
+            bullets = [];
+            bossBullets = [];
+            bombs = [];
+            shootCooldown = 0;
+            wave = 1;
+            waveBoss = null;
+            waveActive = false;
+            waveWin = false;
+            // points = 0; // Punkte NICHT zurücksetzen!
+            resetUpgrades();
+
+            function nextWave() {
+                enemies = [];
+                bullets = [];
+                bossBullets = [];
+                bombs = [];
+                waveBoss = null;
+                resetWaveTimer();
+
+                // KEINE Lebensauffüllung mehr!
+                // Upgrade-Menü nur vor 5 und 10
+                if ([5,10].includes(wave)) {
+                    openUpgradeMenu();
+                    return;
+                }
+
+                // Wellen-Definitionen (wie gehabt)
+                if (wave === 1) {
+                    for (let i = 0; i < 5; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: 'orange', hp: 2, dir: Math.floor(Math.random() * 4)
+                        });
+                    }
+                } else if (wave === 2) {
+                    for (let i = 0; i < 10; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: 'orange', hp: 2, dir: Math.floor(Math.random() * 4)
+                        });
+                    }
+                } else if (wave === 3) {
+                    for (let i = 0; i < 12; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: 'orange', hp: 2, dir: Math.floor(Math.random() * 4)
+                        });
+                    }
+                    enemies.push({
+                        x: 400, y: 300, w: 38, h: 38, color: '#b36b00', hp: 3, dir: 0, strong: true
+                    });
+                } else if (wave === 4) {
+                    for (let i = 0; i < 10; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: 'orange', hp: 2, dir: Math.floor(Math.random() * 4)
+                        });
+                    }
+                    for (let i = 0; i < 3; i++) {
+                        enemies.push({
+                            x: 400 + i * 40, y: 100 + i * 100, w: 38, h: 38, color: '#b36b00', hp: 3, dir: 0, strong: true
+                        });
+                    }
+                } else if (wave === 5) {
+                    waveBoss = {
+                        x: 700, y: 250, w: 70, h: 70, color: 'red', hp: 20, active: true, dir: 0, shootCooldown: 0, name: "BOSS"
+                    };
+                } else if (wave === 6) {
+                    for (let i = 0; i < 20; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: 'orange', hp: 2, dir: Math.floor(Math.random() * 4)
+                        });
+                    }
+                    for (let i = 0; i < 5; i++) {
+                        enemies.push({
+                            x: 400 + i * 30, y: 100 + i * 80, w: 38, h: 38, color: '#b36b00', hp: 3, dir: 0, strong: true
+                        });
+                    }
+                } else if (wave === 7) {
+                    for (let i = 0; i < 30; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: 'orange', hp: 2, dir: Math.floor(Math.random() * 4)
+                        });
+                    }
+                    for (let i = 0; i < 3; i++) {
+                        enemies.push({
+                            x: 400 + i * 40, y: 100 + i * 100, w: 38, h: 38, color: '#b36b00', hp: 3, dir: 0, strong: true
+                        });
+                    }
+                } else if (wave === 8) {
+                    waveBoss = {
+                        x: 700, y: 200, w: 110, h: 110, color: '#800', hp: 40, active: true, dir: 0, shootCooldown: 0, name: "EXTREM-BOSS"
+                    };
+                } else if (wave === 9) {
+                    for (let i = 0; i < 5; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: 'orange', hp: 2, dir: Math.floor(Math.random() * 4), speed: 2
+                        });
+                    }
+                    for (let i = 0; i < 10; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: '#0cf', hp: 2, dir: Math.floor(Math.random() * 4), speed: 3
+                        });
+                    }
+                    for (let i = 0; i < 10; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: '#0ff', hp: 2, dir: Math.floor(Math.random() * 4), speed: 4
+                        });
+                    }
+                } else if (wave === 10) {
+                    waveBoss = {
+                        x: 700, y: 250, w: 70, h: 70, color: 'red', hp: 20, active: true, dir: 0, shootCooldown: 0, name: "BOSS"
+                    };
+                    enemies.push({
+                        x: 700, y: 100, w: 110, h: 110, color: '#800', hp: 40, dir: 0, strong: true, active: true, shootCooldown: 0, name: "EXTREM-BOSS"
+                    });
+                } else if (wave === 11) {
+                    for (let i = 0; i < 30; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: '#0cf', hp: 2, dir: Math.floor(Math.random() * 4), speed: 4
+                        });
+                    }
+                } else if (wave === 12) {
+                    for (let i = 0; i < 30; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: '#0cf', hp: 2, dir: Math.floor(Math.random() * 4), speed: 4
+                        });
+                    }
+                    for (let i = 0; i < 5; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: '#0ff', hp: 2, dir: Math.floor(Math.random() * 4), speed: 5
+                        });
+                    }
+                    for (let i = 0; i < 5; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: 'orange', hp: 2, dir: Math.floor(Math.random() * 4), speed: 2
+                        });
+                    }
+                } else if (wave === 13) {
+                    for (let i = 0; i < 40; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: '#0cf', hp: 2, dir: Math.floor(Math.random() * 4), speed: 4
+                        });
+                    }
+                    for (let i = 0; i < 5; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: '#0ff', hp: 2, dir: Math.floor(Math.random() * 4), speed: 5
+                        });
+                    }
+                } else if (wave === 14) {
+                    for (let i = 0; i < 20; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: '#0cf', hp: 2, dir: Math.floor(Math.random() * 4), speed: 4
+                        });
+                    }
+                    for (let i = 0; i < 10; i++) {
+                        enemies.push({
+                            x: 200 + Math.random() * 650,
+                            y: 50 + Math.random() * 500,
+                            w: 28, h: 28, color: '#0ff', hp: 2, dir: Math.floor(Math.random() * 4), speed: 5
+                        });
+                    }
+                    for (let i = 0; i < 2; i++) {
+                        enemies.push({
+                            x: 700, y: 100 + i * 200, w: 70, h: 70, color: 'red', hp: 20, dir: 0, strong: true, active: true, shootCooldown: 0, name: "BOSS"
+                        });
+                    }
+                } else if (wave === 15) {
+                    waveBoss = {
+                        x: 700, y: 200, w: 140, h: 140, color: '#f0f', hp: 50, active: true, dir: 0, shootCooldown: 0, name: "HAUPTBOSS", teleport: true, dash: true
+                    };
+                }
+            }
+
+            function waveLoop() {
+                if (!gameActive) return;
+                if (upgradeMenuActive) {
+                    draw();
+                    drawUpgrades();
+                    requestAnimationFrame(waveLoop);
+                    return;
+                }
+                if (pauseMenuActive) {
+                    draw();
+                    drawPauseMenu();
+                    return;
+                }
+                updateWaveTimer();
+                movePlayer();
+                moveEnemies();
+                moveBombs();
+                shoot();
+                moveBullets();
+                bulletHits();
+                bombHits();
+                if (waveBoss && waveBoss.active && waveBoss.hp > 0) {
+                    moveBoss();
+                    moveBossBullets();
+                    bossBulletHits();
+                }
+                if (wave >= 5 && Math.random() < 0.01 && bombs.length < 3) {
+                    bombs.push({
+                        x: 900,
+                        y: 50 + Math.random() * 500,
+                        r: 18,
+                        speed: 4 + Math.random() * 2
+                    });
+                }
+                draw();
+                drawUpgrades();
+
+                if (waveBoss && waveBoss.active && waveBoss.hp <= 0 && !waveWin) {
+                    wave++;
+                    nextWave();
+                }
+                if (enemies.every(e => e.hp <= 0) && (!waveBoss || !waveBoss.active) && !waveWin) {
+                    wave++;
+                    nextWave();
+                }
+
+                checkGameOver();
+                requestAnimationFrame(waveLoop);
+            }
+
+            gameActive = true;
+            resetGameVars();
+            resetUpgrades();
+            nextWave();
+            requestAnimationFrame(waveLoop);
+        }
+
+        function startGame() {
+            resetGameVars();
+            gameActive = true;
+            if (mode === "single") {
+                player.hp = 5;
+                player.maxHp = 5;
+            }
+            if (mode === "1vs1") {
+                player.hp = 5;
+                player.maxHp = 5;
+                player2.hp = 5;
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+            if (upgradeMenuActive) {
+                draw();
+                drawUpgrades();
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            if (pauseMenuActive) {
+                draw();
+                drawPauseMenu();
+                return;
+            }
+            movePlayer();
+            moveEnemies();
+            moveBombs();
+            shoot();
+            moveBullets();
+            bulletHits();
+            bombHits();
+            if (boss.active && boss.hp > 0) {
+                moveBoss();
+                moveBossBullets();
+                bossBulletHits();
+            }
+            draw();
+            drawUpgrades();
+            checkGameOver();
+            requestAnimationFrame(gameLoop);
+        }
+
+        showMenu();
+    </script>
+</body>
+</html>YTRXy
